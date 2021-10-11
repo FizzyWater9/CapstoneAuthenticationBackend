@@ -41,13 +41,14 @@ app.get("/hello", (req, res) => {
     });
 });
 
-app.get("/adduser", (req, res) => {
+app.post("/adduser", (req, res) => {
     cors(req, res, () => {
         //PREFLIGHT CHECK
         if (req.method === "OPTIONS") {
             res.status(200).send();
         } else {
             
+            let id = create_UUID();
             let firstName = req.query.firstname;
             let lastName = req.query.lastname;
 
@@ -60,11 +61,20 @@ app.get("/adduser", (req, res) => {
                 } else {
                     res.status(200).send("User was added.");
                 }
-            })
-            
+            })     
         }
     });
 });
+
+function create_UUID(){
+    var dt = new Date().getTime();
+    var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = (dt + Math.random()*16)%16 | 0;
+        dt = Math.floor(dt/16);
+        return (c=='x' ? r :(r&0x3|0x8)).toString(16);
+    });
+    return uuid;
+}
 
 app.get("/getuser", (req, res) => {
     cors(req, res, () => {
