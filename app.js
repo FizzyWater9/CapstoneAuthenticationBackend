@@ -48,16 +48,21 @@ app.post("/adduser", (req, res) => {
             res.status(200).send();
         } else {
             
-            let id = create_UUID();
+            let id = create_UUID();     //creation of unique uuid in format of 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
             let firstName = req.query.firstname;
             let lastName = req.query.lastname;
+            let email = req.query.email;
+            let password = req.query.password;
 
-            const sqlInsert = `INSERT INTO users (firstname, lastname) VALUES (?,?)`;
-            const valuesToAdd = [firstName, lastName];
+            const sqlInsert = `INSERT INTO users (id, firstname, lastname, email, password) VALUES (?,?,?,?,?)`;
+            const valuesToAdd = [id,firstName, lastName, email, password];
 
             connection.query(sqlInsert, valuesToAdd, (err) => {
                 if(err) {
-                    throw err;
+                    if (err.errno == 1062) {            //check for 1062 'ER_DUP_ENTRY' error if duplicate table entry
+                        res.status(409).send("Email already in use.");
+                    }
+                    else throw err;
                 } else {
                     res.status(200).send("User was added.");
                 }
