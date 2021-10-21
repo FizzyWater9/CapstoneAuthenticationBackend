@@ -52,11 +52,11 @@ app.post("/adduser", (req, res) => {
             connection.query(sqlInsert, valuesToAdd, (err) => {
                 if(err) {
                     if (err.errno == 1062) {            //check for 1062 'ER_DUP_ENTRY' error if duplicate table entry
-                        res.status(409).send("Email already in use.");
+                        res.status(409).send({id: "Email already in use."});
                     }
                     else throw err;
                 } else {
-                    res.status(201).send("User was added.");
+                    res.status(201).send({id: "User was added."});
                 }
             })     
         }
@@ -77,12 +77,12 @@ app.get("/login", (req, res) => {
 
             connection.query(sqlCheck, email, async (err, result) => {
                 if (result.length == 0) {
-                    res.status(200).send("No Records Found");
+                    res.status(401).send({id: "Email does not exist."});
                 } else {
                     if (await bcrypt.compare(password, result[0].password)) {
                         res.status(200).send(result[0]);
                     } else {
-                        res.send("Not Allowed");
+                        res.status(401).send({id: "Password is incorrect."});
                     }
                     
                 }
