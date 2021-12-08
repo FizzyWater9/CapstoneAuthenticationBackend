@@ -1,13 +1,16 @@
 const express = require("express");
 const app = express();
 const bcrypt = require('bcrypt');
-//const promise = require("promise");
+const randtoken = require('rand-token');
+const bodyParser = require('body-parser');
+const promise = require("promise");
 
 const cors = require("cors")({
     origin: true
 });
 
 const mysql = require('mysql');
+const sendEmail = require("./utils/sendEmail");
 const connection = mysql.createConnection({
     // properties....
     host: 'localhost',
@@ -115,4 +118,63 @@ app.get("/getuser", (req, res) => {
             })
         }
     })
+})
+
+app.post("/forgotpassword", (req, res) => {
+    cors(req, res, () => {
+        if (req.method === "OPTIONS") {
+            res.status(200).send();
+        } else {
+            const email = req.query.email;
+            const sqlCheck = `SELECT email FROM users WHERE email = ?`;
+
+            connection.query(sqlCheck, email, async (err, result) => {
+                if (result.length == 0) {
+                    res.status(401).send({id: "Email does not exist."});
+                } else {
+                    let token = randtoken.generate(20);
+                    sendEmail(email, "Reset Password Link - GameNode.Online", token);
+                    let update = `UPDATE users SET token = ? WHERE email = ?`;
+                    let data = [token, email];
+
+                    connection.query(update, data, async (err, result) => {
+                        if(err) throw err
+                    });
+                    res.status(200).send();
+                }
+            })
+        }
+    })
+})
+
+app.post("/resetpassword", (req,res) => {
+    cors(req, res, async () => {
+        if (req.method === "OPTIONS") {
+            res.status(200).send();
+        } else {
+            const token = req.query.token;
+            const password = req.query.password;
+            const saltRounds = 10;
+            let hashedPassword = await bcrypt.hash(password, saltRounds);
+    
+            let sqlCheck = `SELECT * from users WHERE token = ?`;
+            connection.query(sqlCheck, token, async (err, result) => {
+                if (result.length == 0) {
+                    res.status(401).send("token does not exist.");
+                } else {
+                    let update = `UPDATE users SET token = ?, password = ? WHERE token = ?`;
+                    let data = ["", hashedPassword, token];
+                    connection.query(update, data, async(err, result) => {
+                        if(err) {
+                            console.log(err);
+                            res.status(401).send("Unfortunate error.");
+                        } else {
+                            res.status(200).send("password updated successfully.")
+                        }
+                    })
+                }
+            })
+    
+        }
+    }) 
 })
