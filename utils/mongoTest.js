@@ -1,5 +1,5 @@
 const {MongoClient} = require('mongodb');
-const uri = "mongodb://173.230.152.26:27017"
+const uri = "mongodb://gamenode.online:27017"
 const client = new MongoClient(uri);
 
 async function runTest() {
