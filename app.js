@@ -4,6 +4,18 @@ const bcrypt = require('bcrypt');
 const randtoken = require('rand-token');
 const bodyParser = require('body-parser');
 const promise = require("promise");
+var https = require('https');
+var http = require('http');
+var fs = require('fs');
+var path = require('path');
+
+console.log('Path of file in parent dir:', require('path').resolve(__dirname, '../app.js'))
+
+var options = {
+    key: fs.readFileSync(path.resolve(__dirname, 'gamenode.key')),
+    ca: fs.readFileSync(path.resolve(__dirname, 'gamenode_online.ca-bundle')),
+    cert: fs.readFileSync(path.resolve(__dirname, 'gamenode_online.crt'))
+  };
 
 const cors = require("cors")({
     origin: true
@@ -14,23 +26,38 @@ const sendEmail = require("./utils/sendEmail");
 const runTest = require("./utils/mongoTest");
 const query = require("./utils/mongoQuery");
 const addUser = require("./utils/mongoAddUser");
+const updatePassword = require("./utils/mongoResetPassword.js");
+const e = require("express");
 
 
 runTest();
 
 
-app.listen(8800, () => {
+/*app.listen(8800, () => {
     console.log(`App listening on port 8800`);
     console.log("Press Ctrl+C to quit.");
-});
+});*/
+
+https.createServer(options, app).listen(8801);
+http.createServer(app).listen(8800)
 
 app.get("/getuser", (req, res) => {
     cors(req, res, async() => {
         if (req.method === "OPTIONS") {
             res.status(200).send();
         } else {
-            let data = await query();
-            res.status(200).send(data);
+            let email = req.query.email;
+            const queryInfo = {"email": email};
+
+            if (email != undefined) {
+                let data = await query(queryInfo);
+                res.status(200).send(data);
+            } else {
+                let data = await query();
+                res.status(200).send(data);
+            }
+            
+            
         }
     })
 })
@@ -69,11 +96,11 @@ app.get("/login", (req, res) => {
             const email = req.query.email;
             const password = req.query.password;
 
-            const queryInfo = {email: email}
+            const queryInfo = {"email": email};
 
             let data = await query(queryInfo);
 
-            if (data[0] == {}) {
+            if (data[0] == undefined) {
                 res.status(401).send({id: "Email does not exist."})
             } else {
                 if (await bcrypt.compare(password, data[0].password)) {
@@ -87,28 +114,20 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/forgotpassword", (req, res) => {
-    cors(req, res, () => {
+    cors(req, res, async () => {
         if (req.method === "OPTIONS") {
-            res.status(200).send();
+            res.status(200).send();f
         } else {
             const email = req.query.email;
-            const sqlCheck = `SELECT email FROM users WHERE email = ?`;
+            const queryInfo = {"email": email};
+            let data = await query(queryInfo);
 
-            connection.query(sqlCheck, email, async (err, result) => {
-                if (result.length == 0) {
-                    res.status(401).send({id: "Email does not exist."});
-                } else {
-                    let token = randtoken.generate(20);
-                    sendEmail(email, "Reset Password Link - GameNode.Online", token);
-                    let update = `UPDATE users SET token = ? WHERE email = ?`;
-                    let data = [token, email];
-
-                    connection.query(update, data, async (err, result) => {
-                        if(err) throw err
-                    });
-                    res.status(200).send();
-                }
-            })
+            if (data[0] == undefined) {
+                res.status(401).send({id: "Email does not exist."});
+            } else {
+                sendEmail(email, "Reset Password Link - GameNode.Online");
+                res.status(200).send({id: "Email was found.  Password link sent."})
+            }
         }
     })
 })
@@ -118,28 +137,15 @@ app.post("/resetpassword", (req,res) => {
         if (req.method === "OPTIONS") {
             res.status(200).send();
         } else {
-            const token = req.query.token;
+            const email = req.query.email;
             const password = req.query.password;
             const saltRounds = 10;
             let hashedPassword = await bcrypt.hash(password, saltRounds);
     
-            let sqlCheck = `SELECT * from users WHERE token = ?`;
-            connection.query(sqlCheck, token, async (err, result) => {
-                if (result.length == 0) {
-                    res.status(401).send("token does not exist.");
-                } else {
-                    let update = `UPDATE users SET token = ?, password = ? WHERE token = ?`;
-                    let data = ["", hashedPassword, token];
-                    connection.query(update, data, async(err, result) => {
-                        if(err) {
-                            console.log(err);
-                            res.status(401).send("Unfortunate error.");
-                        } else {
-                            res.status(200).send("password updated successfully.")
-                        }
-                    })
-                }
-            })
+            let data = await updatePassword(email, hashedPassword);
+            if (data.acknowledged == true) {
+                res.status(200).send("Updated password succesfully!")
+            }
     
         }
     }) 
