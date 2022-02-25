@@ -11,11 +11,13 @@ var path = require('path');
 
 console.log('Path of file in parent dir:', require('path').resolve(__dirname, '../app.js'))
 
+
 var options = {
     key: fs.readFileSync(path.resolve(__dirname, 'gamenode.key')),
     ca: fs.readFileSync(path.resolve(__dirname, 'gamenode_online.ca-bundle')),
     cert: fs.readFileSync(path.resolve(__dirname, 'gamenode_online.crt'))
   };
+
 
 const cors = require("cors")({
     origin: true
@@ -32,11 +34,6 @@ const e = require("express");
 
 runTest();
 
-
-/*app.listen(8800, () => {
-    console.log(`App listening on port 8800`);
-    console.log("Press Ctrl+C to quit.");
-});*/
 
 https.createServer(options, app).listen(8801);
 http.createServer(app).listen(8800)
